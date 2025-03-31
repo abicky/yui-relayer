@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	retry "github.com/avast/retry-go"
@@ -135,23 +136,23 @@ func ExecuteChannelUpgrade(ctx context.Context, pathName string, src, dst *Prova
 
 	failures := 0
 	firstCall := true
-	return runUntilComplete(ctx, interval, func() (bool, error) {
+	return retry.Do(func() error {
 		steps, err := upgradeChannelStep(ctx, src, dst, targetSrcState, targetDstState, firstCall)
 		if err != nil {
 			logger.Error("failed to create channel upgrade step", err)
-			return false, err
+			return retry.Unrecoverable(err)
 		}
 
 		firstCall = false
 
 		if steps.Last {
 			logger.Info("Channel upgrade completed")
-			return true, nil
+			return nil
 		}
 
 		if !steps.Ready() {
 			logger.Debug("Waiting for next channel upgrade step ...")
-			return false, nil
+			return errors.New("waiting for next channel upgrade step")
 		}
 
 		steps.Send(ctx, src, dst)
@@ -159,22 +160,28 @@ func ExecuteChannelUpgrade(ctx context.Context, pathName string, src, dst *Prova
 		if steps.Success() {
 			if err := SyncChainConfigsFromEvents(ctx, pathName, steps.SrcMsgIDs, steps.DstMsgIDs, src, dst); err != nil {
 				logger.Error("failed to synchronize the updated path config to the config file", err)
-				return false, err
+				return retry.Unrecoverable(err)
 			}
 
 			failures = 0
+			return errors.New("proceed with the next step")
 		} else {
 			if failures++; failures > 2 {
 				err := errors.New("channel upgrade failed")
 				logger.Error(err.Error(), err)
-				return false, err
+				return retry.Unrecoverable(err)
 			}
 
 			logger.Warn("Retrying transaction...")
+			return errors.New("retrying transaction")
 		}
-
-		return false, nil
-	})
+	},
+		retry.Context(ctx),
+		retry.Attempts(math.MaxInt),
+		retry.LastErrorOnly(true),
+		retry.Delay(interval),
+		retry.DelayType(retry.FixedDelay),
+	)
 }
 
 // CancelChannelUpgrade executes chanUpgradeCancel on `chain`.
