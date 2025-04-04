@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
-	"github.com/hyperledger-labs/yui-relayer/internal/telemetry"
+	"github.com/hyperledger-labs/yui-relayer/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 )
 
