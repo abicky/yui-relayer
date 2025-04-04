@@ -21,11 +21,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	configPath            = "config/config.json"
+	defaultPrometheusAddr = "localhost:2223"
+	flagPrometheusAddr    = "prometheus-addr"
+)
+
 var (
-	homePath    string
-	debug       bool
-	defaultHome = os.ExpandEnv("$HOME/.yui-relayer")
-	configPath  = "config/config.json"
+	homePath       string
+	debug          bool
+	defaultHome    = os.ExpandEnv("$HOME/.yui-relayer")
+	prometheusAddr string
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -45,10 +51,14 @@ func Execute(modules ...config.ModuleI) error {
 	// Register top level flags --home and --debug
 	rootCmd.PersistentFlags().StringVar(&homePath, flags.FlagHome, defaultHome, "set home directory")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "debug output")
+	rootCmd.PersistentFlags().StringVar(&prometheusAddr, flagPrometheusAddr, defaultPrometheusAddr, "host address to which the prometheus exporter listens")
 	if err := viper.BindPFlag(flags.FlagHome, rootCmd.PersistentFlags().Lookup(flags.FlagHome)); err != nil {
 		return err
 	}
 	if err := viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")); err != nil {
+		return err
+	}
+	if err := viper.BindPFlag(prometheusAddr, rootCmd.PersistentFlags().Lookup(prometheusAddr)); err != nil {
 		return err
 	}
 
@@ -78,6 +88,7 @@ func Execute(modules ...config.ModuleI) error {
 		}
 	}
 
+	var shutdown func(context.Context) error
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		// reads `homeDir/config/config.json` into `var config *Config` before each command
 		if err := viper.BindPFlags(cmd.Flags()); err != nil {
@@ -92,15 +103,19 @@ func Execute(modules ...config.ModuleI) error {
 		if err := ctx.InitConfig(homePath, debug); err != nil {
 			return fmt.Errorf("failed to initialize the configuration: %v", err)
 		}
-		if err := telemetry.InitializeMetrics(telemetry.ExporterNull{}); err != nil {
-			return fmt.Errorf("failed to initialize the metrics: %v", err)
+
+		var err error
+		shutdown, err = telemetry.SetupOTelSDK(cmd.Context(), prometheusAddr)
+		if err != nil {
+			return fmt.Errorf("failed to initialize the telemetry: %v", err)
 		}
+
 		cmd.SetContext(notifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM))
 		return nil
 	}
 	rootCmd.PersistentPostRunE = func(cmd *cobra.Command, _ []string) error {
-		if err := telemetry.ShutdownMetrics(context.Background()); err != nil {
-			return fmt.Errorf("failed to shutdown the metrics subsystem: %v", err)
+		if err := shutdown(context.Background()); err != nil {
+			return fmt.Errorf("failed to shutdown the telemetries: %v", err)
 		}
 		return nil
 	}
