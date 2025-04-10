@@ -71,6 +71,8 @@ func NewSyncHeaders(ctx context.Context, src, dst ChainInfoLightClient) (SyncHea
 
 // Updates updates the headers on both chains
 func (sh *syncHeaders) Updates(ctx context.Context, src, dst ChainInfoLightClient) error {
+	ctx, span := telemetry.StartTrace(ctx, "syncHeaders.Updates", WithChainPairAttributes(src, dst))
+	defer span.End()
 	logger := GetChainPairLogger(src, dst)
 	if err := ensureDifferentChains(src, dst); err != nil {
 		logger.Error("error ensuring different chains", err)

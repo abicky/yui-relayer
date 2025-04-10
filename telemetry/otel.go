@@ -111,8 +111,8 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	return
 }
 
-func GetTracer() trace.Tracer {
-	return tracer
+func StartTrace(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return tracer.Start(ctx, spanName, opts...)
 }
 
 func getEnv(envName, defaultValue string) string {

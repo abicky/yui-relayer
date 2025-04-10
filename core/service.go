@@ -5,6 +5,7 @@ import (
 	"time"
 
 	retry "github.com/avast/retry-go"
+	"github.com/hyperledger-labs/yui-relayer/telemetry"
 )
 
 // StartService starts a relay service
@@ -104,6 +105,8 @@ func (srv *RelayService) Start(ctx context.Context) error {
 
 // Serve performs packet-relay
 func (srv *RelayService) Serve(ctx context.Context) error {
+	ctx, span := telemetry.StartTrace(ctx, "RelayService.Serve", WithChannelPairAttributes(srv.src, srv.dst))
+	defer span.End()
 	logger := GetChannelPairLogger(srv.src, srv.dst)
 
 	// First, update the latest headers for src and dst

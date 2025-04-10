@@ -12,6 +12,8 @@ import (
 	chantypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
 	"github.com/hyperledger-labs/yui-relayer/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ProvableChain represents a chain that is supported by the relayer
@@ -229,4 +231,11 @@ func GetChainPairLogger(src, dst ChainInfo) *log.RelayLogger {
 			dst.ChainID(),
 		).
 		WithModule("core.chain")
+}
+
+func WithChainPairAttributes(src, dst ChainInfoLightClient) trace.SpanStartOption {
+	return trace.WithAttributes(
+		attribute.String("src.chain_id", src.ChainID()),
+		attribute.String("dst.chain_id", dst.ChainID()),
+	)
 }

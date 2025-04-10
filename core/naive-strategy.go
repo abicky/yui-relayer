@@ -78,6 +78,8 @@ func getQueryContext(ctx context.Context, chain *ProvableChain, sh SyncHeaders, 
 }
 
 func (st *NaiveStrategy) UnrelayedPackets(ctx context.Context, src, dst *ProvableChain, sh SyncHeaders, includeRelayedButUnfinalized bool) (*RelayPackets, error) {
+	ctx, span := telemetry.StartTrace(ctx, "NaiveStrategy.UnrelayedPackets", WithChannelPairAttributes(src, dst))
+	defer span.End()
 	logger := GetChannelPairLogger(src, dst)
 	now := time.Now()
 	var (
@@ -496,6 +498,8 @@ func collectAcks(ctx QueryContext, chain *ProvableChain, packets PacketInfoList,
 }
 
 func (st *NaiveStrategy) UpdateClients(ctx context.Context, src, dst *ProvableChain, doExecuteRelaySrc, doExecuteRelayDst, doExecuteAckSrc, doExecuteAckDst bool, sh SyncHeaders, doRefresh bool) (*RelayMsgs, error) {
+	ctx, span := telemetry.StartTrace(ctx, "NaiveStrategy.UpdateClients", WithChannelPairAttributes(src, dst))
+	defer span.End()
 	logger := GetChannelPairLogger(src, dst)
 
 	msgs := NewRelayMsgs()
@@ -558,6 +562,8 @@ func (st *NaiveStrategy) UpdateClients(ctx context.Context, src, dst *ProvableCh
 }
 
 func (st *NaiveStrategy) Send(ctx context.Context, src, dst Chain, msgs *RelayMsgs) {
+	ctx, span := telemetry.StartTrace(ctx, "NaiveStrategy.Send", WithChannelPairAttributes(src, dst))
+	defer span.End()
 	logger := GetChannelPairLogger(src, dst)
 
 	msgs.MaxTxSize = st.MaxTxSize
