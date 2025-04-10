@@ -9,6 +9,8 @@ RLY_BINARY=${SCRIPT_DIR}/../../../../build/yrly
 RLY="${RLY_BINARY} --debug"
 FIXTURES_DIR=${SCRIPT_DIR}/../fixtures
 
+source ${SCRIPT_DIR}/../../../scripts/set-telemetry-envvars
+
 echo "Generating ${RLY_BINARY} configurations..."
 
 # Ensure ${RLY_BINARY} is installed
@@ -20,6 +22,11 @@ fi
 rm -rf ${RELAYER_CONF} &> /dev/null
 
 ${RLY} config init
+if [ "YRLY_ENABLE_TELEMETRY" = "true" ]; then
+  # Set "null" to avoid duplicate logs
+  jq '.global.logger.output = "null"' ${RELAYER_CONF}/config/config.json > ${RELAYER_CONF}/config/config.json.tmp
+  mv ${RELAYER_CONF}/config/config.json.tmp ${RELAYER_CONF}/config/config.json
+fi
 ${RLY} chains add-dir configs/demo/
 
 # setup key for tendermint client
