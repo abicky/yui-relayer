@@ -12,7 +12,10 @@ import (
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	conntypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
+	"github.com/hyperledger-labs/yui-relayer/telemetry"
 	"github.com/hyperledger-labs/yui-relayer/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -24,6 +27,8 @@ var (
 
 // CreateConnection sends connection creation messages every interval until a connection is created
 func CreateConnection(ctx context.Context, pathName string, src, dst *ProvableChain, interval time.Duration) error {
+	ctx, span := telemetry.StartTrace(ctx, "CreateConnection", WithConnectionPairAttributes(src, dst))
+	defer span.End()
 	logger := GetConnectionPairLogger(src, dst)
 	defer logger.TimeTrack(time.Now(), "CreateConnection")
 
@@ -399,4 +404,15 @@ func GetConnectionPairLogger(src, dst Chain) *log.RelayLogger {
 			dst.Path().ConnectionID,
 		).
 		WithModule("core.connection")
+}
+
+func WithConnectionPairAttributes(src, dst Chain) trace.SpanStartOption {
+	return trace.WithAttributes(
+		attribute.String("src.chain_id", src.ChainID()),
+		attribute.String("src.client_id", src.Path().ClientID),
+		attribute.String("src.connection_id", src.Path().ConnectionID),
+		attribute.String("dst.chain_id", dst.ChainID()),
+		attribute.String("dst.client_id", dst.Path().ClientID),
+		attribute.String("dst.connection_id", dst.Path().ConnectionID),
+	)
 }

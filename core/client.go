@@ -8,6 +8,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
+	"github.com/hyperledger-labs/yui-relayer/telemetry"
 	"github.com/hyperledger-labs/yui-relayer/log"
 )
 
@@ -62,6 +63,8 @@ func checkCreateClientsReady(ctx context.Context, src, dst *ProvableChain, logge
 }
 
 func CreateClients(ctx context.Context, pathName string, src, dst *ProvableChain, srcHeight, dstHeight exported.Height) error {
+	ctx, span := telemetry.StartTrace(ctx, "CreateClients", WithChainPairAttributes(src, dst))
+	defer span.End()
 	logger := GetChainPairLogger(src, dst)
 	defer logger.TimeTrack(time.Now(), "CreateClients")
 

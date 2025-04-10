@@ -11,6 +11,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	chantypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
+	"github.com/hyperledger-labs/yui-relayer/telemetry"
 	"github.com/hyperledger-labs/yui-relayer/log"
 )
 
@@ -76,6 +77,8 @@ func (action UpgradeAction) String() string {
 
 // InitChannelUpgrade builds `MsgChannelUpgradeInit` based on the specified UpgradeFields and sends it to the specified chain.
 func InitChannelUpgrade(ctx context.Context, chain, cp *ProvableChain, upgradeFields chantypes.UpgradeFields, permitUnsafe bool) error {
+	ctx, span := telemetry.StartTrace(ctx, "InitChannelUpgrade", WithChannelAttributes(chain.Chain))
+	defer span.End()
 	logger := GetChannelLogger(chain.Chain)
 	defer logger.TimeTrack(time.Now(), "InitChannelUpgrade")
 
@@ -130,6 +133,8 @@ func InitChannelUpgrade(ctx context.Context, chain, cp *ProvableChain, upgradeFi
 // ExecuteChannelUpgrade carries out channel upgrade handshake until both chains transition to the OPEN state.
 // This function repeatedly checks the states of both chains and decides the next action.
 func ExecuteChannelUpgrade(ctx context.Context, pathName string, src, dst *ProvableChain, interval time.Duration, targetSrcState, targetDstState UpgradeState) error {
+	ctx, span := telemetry.StartTrace(ctx, "ExecuteChannelUpgrade", WithChannelPairAttributes(src, dst))
+	defer span.End()
 	logger := GetChannelPairLogger(src, dst)
 	defer logger.TimeTrack(time.Now(), "ExecuteChannelUpgrade")
 
@@ -179,6 +184,8 @@ func ExecuteChannelUpgrade(ctx context.Context, pathName string, src, dst *Prova
 
 // CancelChannelUpgrade executes chanUpgradeCancel on `chain`.
 func CancelChannelUpgrade(ctx context.Context, chain, cp *ProvableChain, settlementInterval time.Duration) error {
+	ctx, span := telemetry.StartTrace(ctx, "CancelChannelUpgrade", WithChannelPairAttributes(chain, cp))
+	defer span.End()
 	logger := GetChannelPairLogger(chain, cp)
 	defer logger.TimeTrack(time.Now(), "CancelChannelUpgrade")
 
