@@ -40,7 +40,11 @@ func keysAddCmd(ctx *config.Context) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			chain := c.Chain.(*tendermint.Chain)
+
+			var chain tendermint.Chain
+			if ok := c.As("Chain", &chain); !ok {
+				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
+			}
 
 			var keyName string
 			if len(args) == 2 {
@@ -100,7 +104,11 @@ func keysRestoreCmd(ctx *config.Context) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			chain := c.Chain.(*tendermint.Chain)
+
+			var chain tendermint.Chain
+			if ok := c.As("Chain", &chain); !ok {
+				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
+			}
 
 			if chain.KeyExists(keyName) {
 				return errKeyExists(keyName)
@@ -136,7 +144,11 @@ func keysShowCmd(ctx *config.Context) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			chain := c.Chain.(*tendermint.Chain)
+
+			var chain tendermint.Chain
+			if ok := c.As("Chain", &chain); !ok {
+				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
+			}
 
 			var keyName string
 			if len(args) == 2 {
@@ -177,7 +189,11 @@ func keysListCmd(ctx *config.Context) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			chain := c.Chain.(*tendermint.Chain)
+
+			var chain tendermint.Chain
+			if ok := c.As("Chain", &chain); !ok {
+				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
+			}
 
 			info, err := chain.Keybase.List()
 			if err != nil {

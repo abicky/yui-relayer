@@ -134,7 +134,7 @@ func (cc ChainProverConfig) Build() (*ProvableChain, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewProvableChain(chain, prover), nil
+	return NewProvableChain(&chainTracerBridge{chain}, &proverTracerBridge{prover}), nil
 }
 
 func SyncChainConfigsFromEvents(ctx context.Context, pathName string, msgIDsSrc, msgIDsDst []MsgID, src, dst *ProvableChain) error {
