@@ -8,7 +8,7 @@ import (
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 	"github.com/hyperledger-labs/yui-relayer/chains/tendermint"
 	"github.com/hyperledger-labs/yui-relayer/config"
-	"github.com/hyperledger-labs/yui-relayer/otel/bridge"
+	"github.com/hyperledger-labs/yui-relayer/otelcore"
 	"github.com/spf13/cobra"
 )
 
@@ -43,11 +43,11 @@ func initLightCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var chain tendermint.Chain
-			if ok := bridge.As(c.Chain, &chain); !ok {
+			if ok := otelcore.As(c.Chain, &chain); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
 			}
 			var prover tendermint.Prover
-			if ok := bridge.As(c.Prover, &prover); !ok {
+			if ok := otelcore.As(c.Prover, &prover); !ok {
 				return fmt.Errorf("Prover %q is not a tendermint.Prover", args[0])
 			}
 
@@ -106,7 +106,7 @@ func updateLightCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var prover tendermint.Prover
-			if ok := bridge.As(c.Prover, &prover); !ok {
+			if ok := otelcore.As(c.Prover, &prover); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Prover", args[0])
 			}
 
@@ -143,11 +143,11 @@ func lightHeaderCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var chain tendermint.Chain
-			if ok := bridge.As(c.Chain, &chain); !ok {
+			if ok := otelcore.As(c.Chain, &chain); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
 			}
 			var prover tendermint.Prover
-			if ok := bridge.As(c.Prover, &prover); !ok {
+			if ok := otelcore.As(c.Prover, &prover); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Prover", args[0])
 			}
 
@@ -209,7 +209,7 @@ func deleteLightCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var prover tendermint.Prover
-			if ok := bridge.As(c.Prover, &prover); !ok {
+			if ok := otelcore.As(c.Prover, &prover); !ok {
 				return fmt.Errorf("Prover %q is not a tendermint.Prover", args[0])
 			}
 

@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/hyperledger-labs/yui-relayer/core"
-	"github.com/hyperledger-labs/yui-relayer/otel/bridge"
+	"github.com/hyperledger-labs/yui-relayer/otelcore"
 )
 
 var _ core.ChainConfig = (*ChainConfig)(nil)
 
 func (c ChainConfig) Build() (core.Chain, error) {
-	return bridge.NewChain(
+	return otelcore.NewChain(
 		&Chain{
 			config: c,
 		},
@@ -60,7 +60,7 @@ var _ core.ProverConfig = (*ProverConfig)(nil)
 
 func (c ProverConfig) Build(chain core.Chain) (core.Prover, error) {
 	var err error
-	chain, err = bridge.UnwrapChain(chain)
+	chain, err = otelcore.UnwrapChain(chain)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (c ProverConfig) Build(chain core.Chain) (core.Prover, error) {
 	if !ok {
 		return nil, fmt.Errorf("chain type must be %T, not %T", &Chain{}, chain)
 	}
-	return bridge.NewProver(NewProver(tmChain, c), chain.ChainID(), tracer), nil
+	return otelcore.NewProver(NewProver(tmChain, c), chain.ChainID(), tracer), nil
 }
 
 func (c ProverConfig) Validate() error {
