@@ -7,7 +7,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/hyperledger-labs/yui-relayer/chains/tendermint"
 	"github.com/hyperledger-labs/yui-relayer/config"
-	"github.com/hyperledger-labs/yui-relayer/otelcore"
+	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +43,7 @@ func keysAddCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var chain tendermint.Chain
-			if ok := otelcore.As(c.Chain, &chain); !ok {
+			if ok := core.AsChain(c, &chain); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
 			}
 
@@ -107,7 +107,7 @@ func keysRestoreCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var chain tendermint.Chain
-			if ok := otelcore.As(c.Chain, &chain); !ok {
+			if ok := core.AsChain(c, &chain); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
 			}
 
@@ -147,7 +147,7 @@ func keysShowCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var chain tendermint.Chain
-			if ok := otelcore.As(c.Chain, &chain); !ok {
+			if ok := core.AsChain(c, &chain); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
 			}
 
@@ -192,7 +192,7 @@ func keysListCmd(ctx *config.Context) *cobra.Command {
 			}
 
 			var chain tendermint.Chain
-			if ok := otelcore.As(c.Chain, &chain); !ok {
+			if ok := core.AsChain(c, &chain); !ok {
 				return fmt.Errorf("Chain %q is not a tendermint.Chain", args[0])
 			}
 
