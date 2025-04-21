@@ -30,7 +30,7 @@ func CreateConnection(ctx context.Context, pathName string, src, dst *ProvableCh
 	ctx, span := tracer.Start(ctx, "CreateConnection", WithConnectionPairAttributes(src, dst))
 	defer span.End()
 	logger := GetConnectionPairLogger(src, dst)
-	defer logger.TimeTrack(time.Now(), "CreateConnection")
+	defer logger.TimeTrackContext(ctx, time.Now(), "CreateConnection")
 
 	if cont, err := checkConnectionCreateReady(ctx, src, dst, logger); err != nil {
 		span.SetStatus(codes.Error, err.Error())
@@ -43,15 +43,12 @@ func CreateConnection(ctx context.Context, pathName string, src, dst *ProvableCh
 	err := runUntilComplete(ctx, interval, func() (bool, error) {
 		connSteps, err := createConnectionStep(ctx, src, dst)
 		if err != nil {
-			logger.Error(
-				"failed to create connection step",
-				err,
-			)
+			logger.ErrorContext(ctx, "failed to create connection step", err)
 			return false, err
 		}
 
 		if !connSteps.Ready() {
-			logger.Debug("Waiting for next connection step ...")
+			logger.DebugContext(ctx, "Waiting for next connection step ...")
 			return false, nil
 		}
 
@@ -66,7 +63,7 @@ func CreateConnection(ctx context.Context, pathName string, src, dst *ProvableCh
 			// In the case of success and this being the last transaction
 			// debug logging, log created connection and break
 			if connSteps.Last {
-				logger.Info("★ Connection created")
+				logger.InfoContext(ctx, "★ Connection created")
 				return true, nil
 			}
 
@@ -76,11 +73,11 @@ func CreateConnection(ctx context.Context, pathName string, src, dst *ProvableCh
 			// In the case of failure, increment the failures counter and exit if this is the 3rd failure
 			if failed++; failed > 2 {
 				err := errors.New("Connection handshake failed")
-				logger.Error(err.Error(), err)
+				logger.ErrorContext(ctx, err.Error(), err)
 				return false, err
 			}
 
-			logger.Warn("Retrying transaction...")
+			logger.WarnContext(ctx, "Retrying transaction...")
 			if err := wait(ctx, 5*time.Second); err != nil {
 				return false, err
 			}
@@ -138,7 +135,7 @@ func checkConnectionCreateReady(ctx context.Context, src, dst *ProvableChain, lo
 	}
 
 	if srcState == conntypes.OPEN && dstState == conntypes.OPEN {
-		logger.Warn("connections are already created", "src_connection_id", srcID, "dst_connection_id", dstID)
+		logger.WarnContext(ctx, "connections are already created", "src_connection_id", srcID, "dst_connection_id", dstID)
 		return false, nil
 	}
 	return true, nil
@@ -230,7 +227,7 @@ func createConnectionStep(ctx context.Context, src, dst *ProvableChain) (*RelayM
 	switch {
 	// Handshake hasn't been started on src or dst, relay `connOpenInit` to src
 	case srcConn.Connection.State == conntypes.UNINITIALIZED && dstConn.Connection.State == conntypes.UNINITIALIZED:
-		logConnectionStates(src, dst, srcConn, dstConn)
+		logConnectionStates(ctx, src, dst, srcConn, dstConn)
 		addr := mustGetAddress(src)
 		if len(dstUpdateHeaders) > 0 {
 			out.Src = append(out.Src, src.Path().UpdateClients(dstUpdateHeaders, addr)...)
@@ -238,7 +235,7 @@ func createConnectionStep(ctx context.Context, src, dst *ProvableChain) (*RelayM
 		out.Src = append(out.Src, src.Path().ConnInit(dst.Path(), addr))
 		// Handshake has started on dst (1 step done), relay `connOpenTry` and `updateClient` on src
 	case srcConn.Connection.State == conntypes.UNINITIALIZED && dstConn.Connection.State == conntypes.INIT:
-		logConnectionStates(src, dst, srcConn, dstConn)
+		logConnectionStates(ctx, src, dst, srcConn, dstConn)
 		addr := mustGetAddress(src)
 		if len(dstUpdateHeaders) > 0 {
 			out.Src = append(out.Src, src.Path().UpdateClients(dstUpdateHeaders, addr)...)
@@ -246,7 +243,7 @@ func createConnectionStep(ctx context.Context, src, dst *ProvableChain) (*RelayM
 		out.Src = append(out.Src, src.Path().ConnTry(dst.Path(), dstCsRes, dstConn, dstConsRes, srcHostConsProof, addr))
 	// Handshake has started on src (1 step done), relay `connOpenTry` and `updateClient` on dst
 	case srcConn.Connection.State == conntypes.INIT && dstConn.Connection.State == conntypes.UNINITIALIZED:
-		logConnectionStates(dst, src, dstConn, srcConn)
+		logConnectionStates(ctx, dst, src, dstConn, srcConn)
 		addr := mustGetAddress(dst)
 		if len(srcUpdateHeaders) > 0 {
 			out.Dst = append(out.Dst, dst.Path().UpdateClients(srcUpdateHeaders, addr)...)
@@ -255,7 +252,7 @@ func createConnectionStep(ctx context.Context, src, dst *ProvableChain) (*RelayM
 
 	// Handshake has started on src end (2 steps done), relay `connOpenAck` and `updateClient` to dst end
 	case srcConn.Connection.State == conntypes.TRYOPEN && dstConn.Connection.State == conntypes.INIT:
-		logConnectionStates(dst, src, dstConn, srcConn)
+		logConnectionStates(ctx, dst, src, dstConn, srcConn)
 		addr := mustGetAddress(dst)
 		if len(srcUpdateHeaders) > 0 {
 			out.Dst = append(out.Dst, dst.Path().UpdateClients(srcUpdateHeaders, addr)...)
@@ -264,7 +261,7 @@ func createConnectionStep(ctx context.Context, src, dst *ProvableChain) (*RelayM
 
 	// Handshake has started on dst end (2 steps done), relay `connOpenAck` and `updateClient` to src end
 	case srcConn.Connection.State == conntypes.INIT && dstConn.Connection.State == conntypes.TRYOPEN:
-		logConnectionStates(src, dst, srcConn, dstConn)
+		logConnectionStates(ctx, src, dst, srcConn, dstConn)
 		addr := mustGetAddress(src)
 		if len(dstUpdateHeaders) > 0 {
 			out.Src = append(out.Src, src.Path().UpdateClients(dstUpdateHeaders, addr)...)
@@ -273,7 +270,7 @@ func createConnectionStep(ctx context.Context, src, dst *ProvableChain) (*RelayM
 
 	// Handshake has confirmed on dst (3 steps done), relay `connOpenConfirm` and `updateClient` to src end
 	case srcConn.Connection.State == conntypes.TRYOPEN && dstConn.Connection.State == conntypes.OPEN:
-		logConnectionStates(src, dst, srcConn, dstConn)
+		logConnectionStates(ctx, src, dst, srcConn, dstConn)
 		addr := mustGetAddress(src)
 		if len(dstUpdateHeaders) > 0 {
 			out.Src = append(out.Src, src.Path().UpdateClients(dstUpdateHeaders, addr)...)
@@ -283,7 +280,7 @@ func createConnectionStep(ctx context.Context, src, dst *ProvableChain) (*RelayM
 
 	// Handshake has confirmed on src (3 steps done), relay `connOpenConfirm` and `updateClient` to dst end
 	case srcConn.Connection.State == conntypes.OPEN && dstConn.Connection.State == conntypes.TRYOPEN:
-		logConnectionStates(dst, src, dstConn, srcConn)
+		logConnectionStates(ctx, dst, src, dstConn, srcConn)
 		addr := mustGetAddress(dst)
 		if len(srcUpdateHeaders) > 0 {
 			out.Dst = append(out.Dst, dst.Path().UpdateClients(srcUpdateHeaders, addr)...)
@@ -309,9 +306,9 @@ func validatePaths(src, dst Chain) error {
 	return nil
 }
 
-func logConnectionStates(src, dst Chain, srcConn, dstConn *conntypes.QueryConnectionResponse) {
+func logConnectionStates(ctx context.Context, src, dst Chain, srcConn, dstConn *conntypes.QueryConnectionResponse) {
 	logger := GetConnectionPairLogger(src, dst)
-	logger.Info(
+	logger.InfoContext(ctx,
 		"connection states",
 		slog.Group("src",
 			slog.Uint64("proof_height", mustGetHeight(srcConn.ProofHeight)),
@@ -345,9 +342,9 @@ func mustGetAddress(chain interface {
 func querySettledConnectionPair(
 	srcCtx, dstCtx QueryContext,
 	src, dst interface {
-		Chain
-		StateProver
-	},
+	Chain
+	StateProver
+},
 	prove bool,
 ) (*conntypes.QueryConnectionResponse, *conntypes.QueryConnectionResponse, bool, error) {
 	logger := GetConnectionPairLogger(src, dst)
@@ -359,19 +356,19 @@ func querySettledConnectionPair(
 
 	srcConn, dstConn, err := QueryConnectionPair(srcCtx, dstCtx, src, dst, prove)
 	if err != nil {
-		logger.Error("failed to query connection pair at the latest finalized height", err)
+		logger.ErrorContext(srcCtx.Context(), "failed to query connection pair at the latest finalized height", err)
 		return nil, nil, false, err
 	}
 
 	var srcLatestCtx, dstLatestCtx QueryContext
 	if h, err := src.LatestHeight(srcCtx.Context()); err != nil {
-		logger.Error("failed to get the latest height of the src chain", err)
+		logger.ErrorContext(srcCtx.Context(), "failed to get the latest height of the src chain", err)
 		return nil, nil, false, err
 	} else {
 		srcLatestCtx = NewQueryContext(srcCtx.Context(), h)
 	}
 	if h, err := dst.LatestHeight(dstCtx.Context()); err != nil {
-		logger.Error("failed to get the latest height of the dst chain", err)
+		logger.ErrorContext(dstCtx.Context(), "failed to get the latest height of the dst chain", err)
 		return nil, nil, false, err
 	} else {
 		dstLatestCtx = NewQueryContext(dstCtx.Context(), h)
@@ -379,19 +376,19 @@ func querySettledConnectionPair(
 
 	srcLatestConn, dstLatestConn, err := QueryConnectionPair(srcLatestCtx, dstLatestCtx, src, dst, false)
 	if err != nil {
-		logger.Error("failed to query connection pair at the latest height", err)
+		logger.ErrorContext(srcCtx.Context(), "failed to query connection pair at the latest height", err)
 		return nil, nil, false, err
 	}
 
 	if srcConn.Connection.String() != srcLatestConn.Connection.String() {
-		logger.Debug("src connection end in transition",
+		logger.DebugContext(srcCtx.Context(), "src connection end in transition",
 			"from", srcConn.Connection.String(),
 			"to", srcLatestConn.Connection.String(),
 		)
 		return srcConn, dstConn, false, nil
 	}
 	if dstConn.Connection.String() != dstLatestConn.Connection.String() {
-		logger.Debug("dst connection end in transition",
+		logger.DebugContext(dstCtx.Context(), "dst connection end in transition",
 			"from", dstConn.Connection.String(),
 			"to", dstLatestConn.Connection.String(),
 		)

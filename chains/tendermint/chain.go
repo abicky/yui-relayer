@@ -196,7 +196,7 @@ func (c *Chain) sendMsgs(ctx context.Context, msgs []sdk.Msg) (*sdk.TxResponse, 
 	// call msgEventListener if needed
 	if c.msgEventListener != nil {
 		if err := c.msgEventListener.OnSentMsg(ctx, msgs); err != nil {
-			logger.Error("failed to OnSendMsg call", err)
+			logger.ErrorContext(ctx, "failed to OnSendMsg call", err)
 			return res, nil
 		}
 	}
@@ -256,12 +256,12 @@ func (c *Chain) rawSendMsgs(ctx context.Context, msgs []sdk.Msg) (*sdk.TxRespons
 	// NOTE: error is nil, logic should use the returned error to determine if the
 	// transaction was successfully executed.
 	if res.Code != 0 {
-		c.LogFailedTx(res, err, msgs)
+		c.LogFailedTx(ctx, res, err, msgs)
 		return res, false, nil
 	}
 
 	trace.SpanFromContext(ctx).SetAttributes(core.AttributeKeyTxHash.String(res.TxHash))
-	c.LogSuccessTx(res, msgs)
+	c.LogSuccessTx(ctx, res, msgs)
 	return res, true, nil
 }
 

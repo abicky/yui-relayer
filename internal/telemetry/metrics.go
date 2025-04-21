@@ -79,7 +79,8 @@ func NewPrometheusExporter(addr string) (*prometheus.Exporter, error) {
 		mux.Handle("/metrics", promhttp.Handler())
 		if err := http.ListenAndServe(addr, mux); err != nil {
 			logger := log.GetLogger().WithModule("core.metrics")
-			logger.Fatal("Prometheus exporter server failed", err)
+			logger.
+				Fatal("Prometheus exporter server failed", err)
 		}
 	}()
 
